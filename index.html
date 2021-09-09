@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Chat con Websockets versión 1.1</title>
+    <style>
+        #chat{
+            height:500px;
+            width:600px;
+            border:solid black;
+            border-style:groove;
+            float:left;
+            overflow:scroll;
+            padding:2px;
+        }
+
+        #formulario{
+            clear:both;
+        }
+
+        #notificaciones{
+            width:500px;
+            vertical-align: bottom;
+            -moz-border-radius: 15px;
+            border-radius: 15px;
+            text-align: center;
+            color:white;
+            display:none;
+            float:left;
+            padding: 2px 0;
+        }
+        img{
+            width:580px;
+        }
+    </style>
+    <script src="jquery.js"></script>
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+
+    <script>
+    $(document).ready(function()
+    {
+        nick = '';
+
+$("#notificaciones").html("Intentando conexión al servidor de websockets. Por favor espere....").css("background", "orange").fadeIn(300);
+        var socket = io.connect('http://localhost:3000');
+
+        socket.on('connect', function()
+        {
+            notificar("Conectado correctamente al servidor de websockets.", "normal");
+        });
+
+        socket.on('reconnecting', function(datos)
+        {
+            notificar("Error: conexión perdida con servidor, intentando reconexión....", "error");
+        });
+
+        socket.on('reconnect_failed', function(datos)
+        {
+            notificar("Error: !! No se puede conectar al servidor de websockets. !!", "error");
+        });
+
+    
+        socket.on('teletienda', function(datos)
+        {
+
+            
+            datos.usuario=datos.usuario.replace(/<script/g, '');
+            datos.texto=datos.texto.replace(/<script/g, '');
+
+            patron = /jpg|jpeg|gif|png/g;
+            if (datos.texto.match(patron))	
+                $("#chat").append('<strong>' + datos.usuario + '</strong> envió esta imagen:<br/><img src="' + datos.texto + '"/> <br/>');
+            else
+                $("#chat").append('<strong>' + datos.usuario + '</strong>: ' + datos.texto + '<br/>');
+
+           
+            $("#chat").animate({scrollTop: $("#chat").prop("scrollHeight")}, 200);
+        });
+
+        
+        $("#formulario").submit(function(evento)
+        {
+            evento.preventDefault();
+
+            if (nick != '')
+            {
+
+        
+                if ($("#casillatexto").val() != "")
+                {
+                    socket.emit('teletienda', {usuario: nick, texto: $("#casillatexto").val()});
+                }
+
+
+                $("#casillatexto").val('');
+                $("#casillatexto").focus();
+
+            }
+            else
+            {
+                do
+                {
+                    nick = prompt("Introduzca su nick de usuario", "Anónimo");
+                } while (nick == '');
+
+                $("#usuario").html(nick);
+                socket.emit('teletienda', {usuario: nick, texto: "<strong>Acaba de entrar a la sala de chat.</strong>"});
+                $("#casillatexto").val('');
+                $("#casillatexto").focus();
+            }
+        });
+
+
+        function notificar(texto, tipo)
+        {
+            if (tipo == "normal")
+            {
+                $("#notificaciones").html(texto).css("background", "green").
+                        fadeIn(300).delay(1000).fadeOut(1000);
+            }
+
+            if (tipo == "error")
+            {
+                $("#notificaciones").hide().html('').html(texto).css("background", "red").fadeIn(300);
+            }
+        }
+
+
+    });
+    </script>
+</head>
+<body>
+    <h1>Multi-user chat con websockets mejorado con eventos específicos.</h1>
+    <h3>Servidor en VM Debian con express + socket.io + Node.js</h3>
+    <h5>Se permite el envío de imágenes al chat. Copie y pegue la URL de la imagen en la casilla "Enviar".</h5>
+    <div id="chat"></div>
+    <form id="formulario">
+        <input size="50" id="casillatexto"/>
+        <input type="submit" value='Enviar'/><br/>
+        Conectado con el nick:<strong> <span id='usuario'></span></strong>
+    </form>
+
+    <div id="notificaciones"></div>
+</body>
+</html>
